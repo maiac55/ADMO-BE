@@ -9,8 +9,13 @@ export const db = knex({
   useNullAsDefault: true,
 });
 
+async function createIfMissing(table: string, define: (t: knex.Knex.CreateTableBuilder) => void) {
+  const exists = await db.schema.hasTable(table);
+  if (!exists) await db.schema.createTable(table, define);
+}
+
 export async function initDb() {
-  await db.schema.createTableIfNotExists('users', (t) => {
+  await createIfMissing('users', (t) => {
     t.string('id').primary();
     t.string('name').notNullable();
     t.string('email').notNullable().unique();
@@ -19,7 +24,7 @@ export async function initDb() {
     t.timestamp('created_at').defaultTo(db.fn.now());
   });
 
-  await db.schema.createTableIfNotExists('boxes', (t) => {
+  await createIfMissing('boxes', (t) => {
     t.string('id').primary();
     t.string('device_code').notNullable().unique();
     t.string('user_id').notNullable().references('id').inTable('users');
@@ -29,36 +34,36 @@ export async function initDb() {
     t.timestamp('connected_at').defaultTo(db.fn.now());
   });
 
-  await db.schema.createTableIfNotExists('medications', (t) => {
+  await createIfMissing('medications', (t) => {
     t.string('id').primary();
     t.string('box_id').nullable().references('id').inTable('boxes');
     t.string('user_id').notNullable().references('id').inTable('users');
     t.string('name').notNullable();
     t.string('dose').notNullable();
     t.boolean('active').defaultTo(true);
-    t.string('days'); // JSON array e.g. ["Mon","Tue"]
+    t.string('days');
     t.timestamp('created_at').defaultTo(db.fn.now());
   });
 
-  await db.schema.createTableIfNotExists('medication_times', (t) => {
+  await createIfMissing('medication_times', (t) => {
     t.string('id').primary();
     t.string('medication_id').notNullable().references('id').inTable('medications');
-    t.string('label'); // Morning, Afternoon, Night
-    t.string('time').notNullable(); // HH:mm
+    t.string('label');
+    t.string('time').notNullable();
     t.integer('pills').defaultTo(1);
   });
 
-  await db.schema.createTableIfNotExists('medication_history', (t) => {
+  await createIfMissing('medication_history', (t) => {
     t.string('id').primary();
     t.string('medication_id').notNullable().references('id').inTable('medications');
     t.string('user_id').notNullable().references('id').inTable('users');
-    t.string('status').notNullable(); // Taken, Missed, Late
+    t.string('status').notNullable();
     t.string('scheduled_time').notNullable();
     t.string('taken_at');
     t.string('date').notNullable();
   });
 
-  await db.schema.createTableIfNotExists('notification_settings', (t) => {
+  await createIfMissing('notification_settings', (t) => {
     t.string('id').primary();
     t.string('user_id').notNullable().references('id').inTable('users').unique();
     t.boolean('reminders').defaultTo(true);
@@ -70,7 +75,7 @@ export async function initDb() {
     t.string('frequency').defaultTo('daily');
   });
 
-  await db.schema.createTableIfNotExists('password_reset_tokens', (t) => {
+  await createIfMissing('password_reset_tokens', (t) => {
     t.string('id').primary();
     t.string('user_id').notNullable().references('id').inTable('users');
     t.string('token').notNullable().unique();
