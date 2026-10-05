@@ -7,13 +7,15 @@ export async function getHistory(req: AuthRequest, res: Response) {
   const userId = req.userId!;
   const { date, status } = req.query;
 
-  let query = db('medication_history')
-    .where({ user_id: userId })
-    .orderBy('date', 'desc')
-    .orderBy('scheduled_time', 'asc');
+  let query = db('medication_history as h')
+    .leftJoin('medications as m', 'h.medication_id', 'm.id')
+    .where({ 'h.user_id': userId })
+    .orderBy('h.date', 'desc')
+    .orderBy('h.scheduled_time', 'asc')
+    .select('h.*', 'm.name as medication_name', 'm.dose as medication_dose');
 
-  if (date) query = query.where({ date });
-  if (status) query = query.where({ status });
+  if (date) query = query.where({ 'h.date': date });
+  if (status) query = query.where({ 'h.status': status });
 
   const history = await query;
   return res.json({ history });

@@ -2,6 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import { initDb } from './config/initDb';
+import { startDispenser } from './services/dispenser';
 import authRoutes from './routes/auth';
 import boxRoutes from './routes/boxes';
 import medicationRoutes from './routes/medications';
@@ -29,6 +30,7 @@ app.get('/api/health', (_req, res) => {
 initDb().then(() => {
   app.listen(PORT, () => {
     console.log(`🚀 ADMO server running on http://localhost:${PORT}`);
+    startDispenser();
   });
 }).catch((err) => {
   console.error('❌ Failed to initialise database:', err);
