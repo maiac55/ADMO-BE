@@ -9,6 +9,7 @@ import medicationRoutes from './routes/medications';
 import historyRoutes from './routes/history';
 import notificationRoutes from './routes/notifications';
 import profileRoutes from './routes/profile';
+import dispenserRoutes from './routes/dispenser';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -22,6 +23,7 @@ app.use('/api/medications', medicationRoutes);
 app.use('/api/history', historyRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/profile', profileRoutes);
+app.use('/api/dispenser', dispenserRoutes);
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', message: 'ADMO API is running' });

@@ -83,5 +83,21 @@ export async function initDb() {
     t.integer('used').defaultTo(0);
   });
 
+  await createIfMissing('dispenser_slots', (t) => {
+    t.string('slot').primary();      // morning | noon | evening
+    t.string('time').notNullable();  // HH:MM
+    t.boolean('enabled').defaultTo(true);
+  });
+
+  const defaultSlots = [
+    { slot: 'morning', time: '08:00' },
+    { slot: 'noon', time: '13:00' },
+    { slot: 'evening', time: '20:00' },
+  ];
+  for (const d of defaultSlots) {
+    const exists = await db('dispenser_slots').where({ slot: d.slot }).first();
+    if (!exists) await db('dispenser_slots').insert({ ...d, enabled: true });
+  }
+
   console.log('✅ Database initialised at', DB_PATH);
 }

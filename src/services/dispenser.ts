@@ -32,59 +32,36 @@ function openPort() {
   });
 }
 
-export function sendAlert() {
+export function sendAlert(): boolean {
   if (!port || !port.isOpen) {
     console.warn('⚠️  Cannot send alert — box not connected');
-    return;
+    return false;
   }
   port.write('alert\n', (err) => {
     if (err) console.error('Serial write error:', err.message);
     else console.log('📢 Alert sent to ADMO Box');
   });
+  return true;
 }
 
-// ── Scheduler ─────────────────────────────────────────────────────────────────
-// Checks every minute if a medication time matches the current time
-let lastAlertMinute = '';
+// ── Scheduler ──────────────────────────────────────────────────────────────
+// DEMO: checks every 10s if the current time matches one of the 3 dispenser
+// slots (morning / noon / evening) and sends ONE alert per slot.
+const pad = (n: number) => String(n).padStart(2, '0');
+let lastFired = ''; // "YYYY-MM-DD HH:MM" — avoids firing twice in the same minute
 
 async function checkSchedule() {
   const now = new Date();
-  const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-
-  // Avoid triggering twice in the same minute
-  if (timeStr === lastAlertMinute) return;
-
-  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const today = dayNames[now.getDay()];
+  const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  const key = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${timeStr}`;
+  if (key === lastFired) return;
 
   try {
-    const meds = await db('medications').where({ active: true });
-
-    for (const med of meds) {
-      const days: string[] = JSON.parse(med.days || '[]');
-      if (days.length > 0 && !days.includes(today)) continue;
-
-      const times = await db('medication_times')
-        .where({ medication_id: med.id })
-        .whereRaw('SUBSTR(time, 1, 5) = ?', [timeStr]);
-
-      if (times.length > 0) {
-        console.log(`⏰ Medication time: ${med.name} at ${timeStr} — sending alert`);
-        sendAlert();
-        lastAlertMinute = timeStr;
-
-        // Log to history
-        await db('medication_history').insert({
-          id: require('crypto').randomUUID(),
-          medication_id: med.id,
-          user_id: med.user_id,
-          status: 'Taken',
-          scheduled_time: timeStr,
-          taken_at: timeStr,
-          date: now.toISOString().slice(0, 10),
-        });
-        break; // one alert at a time — button has 40s cooldown
-      }
+    const slot = await db('dispenser_slots').where({ enabled: true, time: timeStr }).first();
+    if (slot) {
+      lastFired = key;
+      console.log(`⏰ ${slot.slot} (${timeStr}) — sending alert`);
+      sendAlert();
     }
   } catch (err: any) {
     console.error('Scheduler error:', err.message);
